@@ -140,3 +140,36 @@ def test_dim_event_has_one_row_per_event(warehouse):
     assert query(warehouse, "select count(*) = count(distinct event_id) from marts.dim_event") == [
         (True,)
     ]
+
+
+def test_market_forecast_uses_only_prices_at_or_before_forecast_time(warehouse):
+    rows = query(
+        warehouse,
+        "select market_ticker, market_probability, price_source, price_observed_at::varchar "
+        "from marts.fct_market_forecast where market_ticker like 'KXU3-26%' order by 1",
+    )
+    assert rows == [
+        # no price at all before forecast time (no candles or trades)
+        ("KXU3-26JUL-T4.5", None, None, None),
+        # last candle with a price ended 1h before forecast time; the 0.05 candle is after it
+        ("KXU3-26JUN-T4.2", 0.25, "candlestick", "2026-07-01 11:30:00"),
+        # trade at 10:00 wins over candles; the 0.95 candle ends after forecast time
+        ("KXU3-26MAY-T4.0", 0.6, "trade", "2026-06-04 10:00:00.123456"),
+    ]
+
+
+def test_outcomes(warehouse):
+    rows = query(
+        warehouse,
+        "select market_ticker, outcome from marts.fct_outcome where market_ticker like 'KXU3-26%' "
+        "order by 1",
+    )
+    assert rows == [("KXU3-26JUL-T4.5", 0), ("KXU3-26JUN-T4.2", 0), ("KXU3-26MAY-T4.0", 1)]
+
+
+def test_market_forecast_has_one_row_per_contract(warehouse):
+    assert query(
+        warehouse,
+        "select count(*) = count(distinct (event_id, market_ticker)) "
+        "from marts.fct_market_forecast",
+    ) == [(True,)]

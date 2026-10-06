@@ -122,3 +122,13 @@ ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
 - `resolution_definition` is the primary rule text of one representative contract in the event;
   per-contract strikes live on the contract rows.
 - The dbt seed `series_registry.csv` mirrors `SERIES_REGISTRY` in Python; a test keeps them equal.
+
+## D11. Market forecast and outcome
+- Grain is event x contract (one strike of one release). The market's forecast is the YES price at
+  `forecast_time`: last trade at or before it, else the last candle that ended at or before it.
+  Contracts with no price by then have a NULL probability and are dropped from scoring.
+- Contracts that opened after, or closed before, `forecast_time` carry
+  `was_open_at_forecast_time = false`.
+- `outcome` is 1 for result `yes`, 0 for `no`, NULL for anything else.
+- Ran on real data on 2026-10-06 (3 settled KXU3 contracts) and produced plausible rows; the three
+  outcomes there are all 0 with market prices of 0.02.
