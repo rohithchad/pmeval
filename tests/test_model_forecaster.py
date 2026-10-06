@@ -90,7 +90,9 @@ def test_future_outcomes_cannot_change_a_prediction():
     poison["outcome"] = 1 - poison["outcome"]
     poison["settled_at"] = pd.Timestamp(target.forecast_time) + timedelta(hours=1)
     poisoned = pd.concat([frame, poison], ignore_index=True)
-    assert LogisticModelForecaster(poisoned, min_train=10).predict(target) == baseline
+    poisoned_prediction = LogisticModelForecaster(poisoned, min_train=10).predict(target)
+    # equal up to floating-point summation order, which differs between machines
+    assert poisoned_prediction == pytest.approx(baseline, abs=1e-9)
 
 
 def test_missing_inputs_decline():
