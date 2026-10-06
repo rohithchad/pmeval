@@ -33,3 +33,20 @@ historical endpoints), read 2026-10-06.
   `KXCPIYOY`, `KXPAYROLLS`, `KXU3`, `KXGDP`, `KXFEDDECISION`. Kalshi has many other CPI/jobs
   series (for example `KXCPI`, `KXECONSTATCPI`, `KXECONSTATU3`, `KXFED`). Which of them
   best match each release is an open assumption to review after inspecting settled markets.
+
+## D5. Historical tier and backfill
+- `GET /historical/cutoff` returned `market_settled_ts`, `trades_created_ts`, `orders_updated_ts`
+  and `market_positions_last_updated_ts` on 2026-10-06. We route by `market_settled_ts`: markets
+  settled before it come from `/historical/markets`; settled markets at or after it come from the
+  live `/markets?status=settled`.
+- Historical candlesticks differ from live ones: fields are `open`/`close` (not `open_dollars`),
+  `volume`/`open_interest` (not `*_fp`). Staging must handle both shapes.
+- Settled markets in both tiers show `status = finalized` in the historical tier; live-tier
+  statuses seen include `active`. Staging maps results from `result` (`yes`/`no`).
+- Assumption: trades for historical markets come from `/historical/trades?ticker=`, and trades for
+  live-tier markets from `/markets/trades`. The docs' cutoff text mentions `/historical/fills` for
+  `trades_created_ts`, which is the member-fills endpoint, not public trades. Re-check if trade
+  counts look short.
+- Backfill is resumable through a JSON state file of completed tickers
+  (`<raw_dir>/_state/kalshi_backfill.json`). A crash mid-market re-writes that market's rows on the
+  next run; duplicates are removed in dbt staging.
