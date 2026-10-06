@@ -1,0 +1,23 @@
+{
+ "count": 3,
+ "observations": [
+  {
+   "realtime_start": "2026-10-06",
+   "realtime_end": "2026-10-06",
+   "date": "2026-10-03",
+   "value": "4"
+  },
+  {
+   "realtime_start": "2026-10-06",
+   "realtime_end": "2026-10-06",
+   "date": "2026-10-04",
+   "value": "4"
+  },
+  {
+   "realtime_start": "2026-10-06",
+   "realtime_end": "2026-10-06",
+   "date": "2026-10-05",
+   "value": "4"
+  }
+ ]
+}

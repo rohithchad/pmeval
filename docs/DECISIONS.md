@@ -50,3 +50,21 @@ historical endpoints), read 2026-10-06.
 - Backfill is resumable through a JSON state file of completed tickers
   (`<raw_dir>/_state/kalshi_backfill.json`). A crash mid-market re-writes that market's rows on the
   next run; duplicates are removed in dbt staging.
+
+## D6. FRED first-release data
+Source: fred.stlouisfed.org/docs/api (series/observations, errors page), read 2026-10-06.
+- `output_type=4` with realtime window 1776-07-04..9999-12-31 returns each observation's initial
+  release only. `realtime_start` is the date that first value was published; this is the as-of
+  availability timestamp used for point-in-time features. Rate limit is 120 requests/minute.
+- Daily series exceed the 2000 vintage-date limit of that query (HTTP 400, observed for
+  `DFEDTARU`). The Fed target rate is a policy decision and is not revised, so it is fetched with
+  the default query and tagged `vintage_policy = unrevised`. Its availability time is the
+  observation date.
+- FRED publishes dates, not times. For as-of logic a first-release date is treated as available at
+  the start of that UTC day plus the release time from the calendar (see release calendar).
+  Conservative handling: a value is only used if its release timestamp is at or before
+  `forecast_time`.
+- Series mapping: CPI `CPIAUCSL` (index level; YoY/MoM derived in dbt), payrolls `PAYEMS` (level;
+  monthly change derived in dbt), unemployment `UNRATE`, GDP `GDPC1` (real GDP level; growth derived
+  in dbt), fed funds `DFEDTARU` (upper bound of target range). Whether derived growth rates match
+  how each Kalshi contract defines its number is an open assumption to check against contract rules.

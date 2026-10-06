@@ -44,12 +44,15 @@ class SeriesSpec:
         fred_series_id: FRED/ALFRED series id for the underlying data.
         kalshi_series_ticker: Kalshi series that trades the release.
         release_name: human-readable name of the scheduled release.
+        revised: False for series that agencies never revise (the Fed target rate), which
+            lets ingestion skip vintage handling. See docs/DECISIONS.md D6.
     """
 
     key: str
     fred_series_id: str
     kalshi_series_ticker: str
     release_name: str
+    revised: bool = True
 
 
 # Kalshi tickers are recorded in docs/DECISIONS.md as assumptions to re-verify live.
@@ -58,5 +61,5 @@ SERIES_REGISTRY: tuple[SeriesSpec, ...] = (
     SeriesSpec("payrolls", "PAYEMS", "KXPAYROLLS", "Employment Situation"),
     SeriesSpec("unemployment", "UNRATE", "KXU3", "Employment Situation"),
     SeriesSpec("gdp", "GDPC1", "KXGDP", "Gross Domestic Product"),
-    SeriesSpec("fed", "DFEDTARU", "KXFEDDECISION", "FOMC Meeting"),
+    SeriesSpec("fed", "DFEDTARU", "KXFEDDECISION", "FOMC Meeting", revised=False),
 )
