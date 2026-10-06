@@ -55,13 +55,14 @@ def test_markets_deduplicated_and_typed(warehouse):
     rows = query(
         warehouse,
         "select market_ticker, result, series_ticker, close_at from staging.stg_kalshi__markets "
-        "order by 1",
+        "where series_ticker = 'KXU3' order by 1",
     )
     assert [r[:3] for r in rows] == [
+        ("KXU3-26JUL-T4.5", "no", "KXU3"),
         ("KXU3-26JUN-T4.2", "no", "KXU3"),
         ("KXU3-26MAY-T4.0", "yes", "KXU3"),
     ]
-    assert str(rows[1][3]) == "2026-06-05 12:29:00"
+    assert str(rows[2][3]) == "2026-06-05 12:29:00"
 
 
 def test_candles_handle_both_tier_shapes_and_null_prices(warehouse):
@@ -118,3 +119,24 @@ def test_fed_meeting_dates_parsed(warehouse):
     )
     # "30-1" with month "Apr/May" ends on May 1
     assert rows == [("2026-04-29", False), ("2026-05-01", False), ("2026-06-17", True)]
+
+
+def test_dim_event_release_and_forecast_times(warehouse):
+    rows = query(
+        warehouse,
+        "select event_id, release_at::varchar, forecast_time::varchar, release_time_source "
+        "from marts.dim_event order by event_id",
+    )
+    assert rows == [
+        # statement published 18:00 UTC; forecast 24h earlier
+        ("KXFEDDECISION-26JUN", "2026-06-17 18:00:00", "2026-06-16 18:00:00", "fed_calendar"),
+        ("KXU3-26JUL", "2026-08-07 12:29:00", "2026-08-06 12:29:00", "kalshi_close_time"),
+        ("KXU3-26JUN", "2026-07-02 12:30:00", "2026-07-01 12:30:00", "fred_calendar"),
+        ("KXU3-26MAY", "2026-06-05 12:30:00", "2026-06-04 12:30:00", "fred_calendar"),
+    ]
+
+
+def test_dim_event_has_one_row_per_event(warehouse):
+    assert query(warehouse, "select count(*) = count(distinct event_id) from marts.dim_event") == [
+        (True,)
+    ]

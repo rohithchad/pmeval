@@ -29,6 +29,7 @@ def kalshi_market(ticker: str, event: str, strike: float, result: str, close: st
         "subtitle": f"{strike}%",
         "status": "finalized",
         "result": result,
+        "rules_primary": f"Synthetic rule: resolves Yes if the value is above {strike}.",
         "strike_type": "greater",
         "floor_strike": strike,
         "expiration_value": "synthetic",
@@ -72,7 +73,16 @@ def write_kalshi(raw: Path) -> None:
     may = [kalshi_market("KXU3-26MAY-T4.0", "KXU3-26MAY", 4.0, "yes", "2026-06-05T12:29:00Z")]
     jun = [kalshi_market("KXU3-26JUN-T4.2", "KXU3-26JUN", 4.2, "no", "2026-07-02T12:29:00Z")]
     write_raw(raw, "kalshi", "historical_markets", may, ingested_at=INGESTED)
-    write_raw(raw, "kalshi", "live_markets", jun, ingested_at=INGESTED)
+    # July: no matching row in the release calendar, so dim_event must fall back to close time.
+    jul = [kalshi_market("KXU3-26JUL-T4.5", "KXU3-26JUL", 4.5, "no", "2026-08-07T12:29:00Z")]
+    # Fed decision on 2026-06-17 (hold). Kalshi closes it at 2:00 p.m. ET; the statement
+    # is published at 18:00 UTC.
+    fed = [
+        kalshi_market(
+            "KXFEDDECISION-26JUN-H0", "KXFEDDECISION-26JUN", 0.0, "yes", "2026-06-17T17:59:00Z"
+        )
+    ]
+    write_raw(raw, "kalshi", "live_markets", jun + jul + fed, ingested_at=INGESTED)
     # May event: release 2026-06-05 12:30Z, forecast_time 2026-06-04 12:30Z (epoch 1780576200).
     forecast = 1780576200
     candles = [

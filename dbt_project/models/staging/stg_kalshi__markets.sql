@@ -22,6 +22,7 @@ parsed as (
         {{ jstr('subtitle') }}                                       as subtitle,
         {{ jstr('status') }}                                         as status,
         nullif({{ jstr('result') }}, '')                             as result,
+        {{ jstr('rules_primary') }}                                  as rules_primary,
         {{ jstr('strike_type') }}                                    as strike_type,
         try_cast({{ jstr('floor_strike') }} as double)               as floor_strike,
         try_cast({{ jstr('cap_strike') }} as double)                 as cap_strike,

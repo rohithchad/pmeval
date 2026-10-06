@@ -1,0 +1,6 @@
+series_key,fred_series_id,kalshi_series_ticker,release_name,release_time_et,is_revised
+cpi,CPIAUCSL,KXCPIYOY,Consumer Price Index,08:30,true
+payrolls,PAYEMS,KXPAYROLLS,Employment Situation,08:30,true
+unemployment,UNRATE,KXU3,Employment Situation,08:30,true
+gdp,GDPC1,KXGDP,Gross Domestic Product,08:30,true
+fed,DFEDTARU,KXFEDDECISION,FOMC Meeting,14:00,false

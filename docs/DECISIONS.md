@@ -108,3 +108,17 @@ ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
   `export SSL_CERT_FILE=$(python -c "import certifi; print(certifi.where())")` before `pip install`.
 - dbt tests run against a synthetic fixture warehouse (`tests/fixture_warehouse.py`). Its numbers
   are made up for testing and are labelled synthetic; only field shapes copy real responses.
+
+## D10. Events and forecast_time
+- Event grain is the Kalshi event ticker (for example `KXU3-26JUN`): one release, many strike
+  contracts. `event_id` is that ticker.
+- `release_at` priority: FRED calendar (date + assumed 08:30 ET) > Fed statement time (14:00 ET
+  fallback) > Kalshi market close time. Events are matched to the calendar by the New York date of
+  the market close time. `release_time_source` records which rule applied so fallbacks are visible.
+  On real data, jobs-report markets close at 12:29 UTC (8:29 ET), one minute before the assumed
+  08:30 ET release, which supports the assumed time for BLS releases (BEA/GDP not yet checked).
+- `forecast_time = release_at - forecast_hours_before` (default 24h), defined once in the dbt macro
+  `forecast_time`. dbt reads `PMEVAL_FORECAST_HOURS_BEFORE`, the same variable Python uses.
+- `resolution_definition` is the primary rule text of one representative contract in the event;
+  per-contract strikes live on the contract rows.
+- The dbt seed `series_registry.csv` mirrors `SERIES_REGISTRY` in Python; a test keeps them equal.

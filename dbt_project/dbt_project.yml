@@ -9,8 +9,13 @@ macro-paths: ["macros"]
 seed-paths: ["seeds"]
 
 vars:
-  # Hours before the scheduled release at which every forecast is made.
-  forecast_hours_before: 24
+  # Hours before the scheduled release at which every forecast is made. Shares the environment
+  # variable used by the Python code so both sides always agree.
+  forecast_hours_before: "{{ env_var('PMEVAL_FORECAST_HOURS_BEFORE', '24') }}"
+
+seeds:
+  pmeval:
+    +schema: staging
 
 models:
   pmeval:
