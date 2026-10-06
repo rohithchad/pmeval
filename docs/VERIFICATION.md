@@ -8,7 +8,8 @@ service and the output was observed. "Mocks only" means unit tests with recorded
 | HTTP client (retries, rate limit) | Mocks only |
 | Raw Parquet writer | Mocks only (local filesystem; no S3) |
 | Kalshi live client: series, events, markets, candlesticks, trades | Live read on 2026-10-06 (small requests, public data); fixtures recorded from it |
-| `kalshi_live` ingestion CLI end to end | Not yet run |
+| `kalshi_live` ingestion CLI end to end | Not yet run (components used by it were run live) |
+| Bronze loader over real raw files | Live on a scratch copy of real raw data (views created); unit-tested |
 | Kalshi historical client: cutoff, historical markets, candlesticks, trades | Live read on 2026-10-06 (2 markets of KXU3) |
 | Backfill routing across both tiers + resume state | Live on a small sample (2 historical + 1 live-settled market). Full-series backfill not yet run |
 | FRED client: first-release observations (CPIAUCSL, PAYEMS, UNRATE, GDPC1) and unrevised DFEDTARU | Live on 2026-10-06 with the user's FRED key; fixtures recorded from it |

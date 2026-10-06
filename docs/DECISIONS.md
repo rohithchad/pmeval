@@ -88,3 +88,10 @@ Checkpoint review (rule 9, before commit 9): no source needs registration or has
 - Meeting dates are stored as shown ("27-28", "17-18*"); the statement is released on the last day.
   Meetings before 2021 are not ingested because Kalshi data does not reach back that far
   (to be confirmed with real run results).
+
+## D8. Bronze layer is views over raw Parquet
+`pmeval.warehouse.bronze` creates `bronze.<source>_<dataset>` views with
+`CREATE OR REPLACE VIEW ... read_parquet(..., hive_partitioning, union_by_name)`. No data is copied,
+reruns are safe, and new raw files appear immediately. Datasets with no files yet get empty
+placeholder views (standard raw columns) so dbt models compile before every source has been
+ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
