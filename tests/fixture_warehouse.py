@@ -88,7 +88,11 @@ def write_kalshi(raw: Path) -> None:
             "FEDDECISION-26APR-H0", "FEDDECISION-26APR", 0.0, "yes", "2026-04-29T17:59:00Z"
         )
     ]
-    write_raw(raw, "kalshi", "live_markets", jun + jul + fed + legacy, ingested_at=INGESTED)
+    # Kalshi's oldest payroll events are named PROLLS; they must still map to the payrolls series.
+    prolls = [kalshi_market("PROLLS-23MAR-T0", "PROLLS-23MAR", 0.0, "yes", "2023-04-07T12:25:00Z")]
+    write_raw(
+        raw, "kalshi", "live_markets", jun + jul + fed + legacy + prolls, ingested_at=INGESTED
+    )
     # May event: release 2026-06-05 12:30Z, forecast_time 2026-06-04 12:30Z (epoch 1780576200).
     forecast = 1780576200
     candles = [

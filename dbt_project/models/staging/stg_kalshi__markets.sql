@@ -18,8 +18,11 @@ parsed as (
         {{ jstr('ticker') }}                                         as market_ticker,
         {{ jstr('event_ticker') }}                                   as event_ticker,
         split_part({{ jstr('event_ticker') }}, '-', 1)               as series_ticker,
-        regexp_replace(split_part({{ jstr('event_ticker') }}, '-', 1), '^KX', '')
-                                                                     as series_root,
+        -- Strip the KX prefix, and map Kalshi's oldest payroll name PROLLS to PAYROLLS.
+        case regexp_replace(split_part({{ jstr('event_ticker') }}, '-', 1), '^KX', '')
+            when 'PROLLS' then 'PAYROLLS'
+            else regexp_replace(split_part({{ jstr('event_ticker') }}, '-', 1), '^KX', '')
+        end                                                          as series_root,
         {{ jstr('title') }}                                          as title,
         {{ jstr('subtitle') }}                                       as subtitle,
         {{ jstr('status') }}                                         as status,

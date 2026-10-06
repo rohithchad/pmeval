@@ -111,6 +111,8 @@ def test_dim_event_release_and_forecast_times(warehouse):
         ("KXU3-26JUL", "2026-08-07 12:29:00", "2026-08-06 12:29:00", "kalshi_close_time"),
         ("KXU3-26JUN", "2026-07-02 12:30:00", "2026-07-01 12:30:00", "fred_calendar"),
         ("KXU3-26MAY", "2026-06-05 12:30:00", "2026-06-04 12:30:00", "fred_calendar"),
+        # the fixture calendar has no payroll rows, so this one falls back to Kalshi's close time
+        ("PROLLS-23MAR", "2023-04-07 12:25:00", "2023-04-06 12:25:00", "kalshi_close_time"),
     ]
 
 
@@ -203,3 +205,12 @@ def test_look_ahead_guard_fails_when_a_feature_timestamp_is_too_late(warehouse, 
     result = run_dbt(tmp_path, broken, "test", "--select", "fct_features_asof")
     assert result.returncode != 0
     assert "not_after_forecast_time" in result.stdout
+
+
+def test_prolls_events_map_to_the_payrolls_series(warehouse):
+    rows = query(
+        warehouse,
+        "select series_key, kalshi_series_ticker from marts.dim_event "
+        "where event_id = 'PROLLS-23MAR'",
+    )
+    assert rows == [("payrolls", "KXPAYROLLS")]
