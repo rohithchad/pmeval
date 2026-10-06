@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     pmeval_forecast_hours_before: int = 24
     pmeval_log_level: str = "INFO"
 
+    # LLM forecaster. Model is configurable because cost and capability differ widely.
+    pmeval_llm_model: str = "claude-opus-5-5"
+    pmeval_llm_samples: int = 3
+    pmeval_llm_effort: str = "medium"
+
     kalshi_base_url: str = "https://external-api.kalshi.com/trade-api/v2"
 
 

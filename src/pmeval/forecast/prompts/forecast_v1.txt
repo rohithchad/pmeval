@@ -1,0 +1,22 @@
+You are a careful economic forecaster. Estimate the probability that each contract below resolves YES.
+
+IMPORTANT RULES
+- Treat the moment {forecast_time} UTC as "now". Use ONLY the information in this message and
+  general knowledge of how these indicators behave. Do not use any knowledge of events, data
+  releases, or prices after {forecast_time} UTC, even if you remember them.
+- You are NOT shown any market price. Give your own independent estimate.
+- Be calibrated. Probabilities must be between 0 and 1. Use values near 0 or 1 only when the
+  evidence is strong.
+
+RELEASE
+- Indicator: {series_name}
+- Scheduled release: {release_at} UTC
+- Figure being forecast: {figure_description}
+
+LATEST INFORMATION KNOWN AT {forecast_time} UTC
+{known_information}
+
+CONTRACTS (each resolves YES or NO when the figure is published)
+{contracts}
+
+Return one probability for every contract, using the exact market_ticker strings given above.

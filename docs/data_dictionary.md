@@ -35,6 +35,25 @@ earlier prediction.
 | `mode` | `live` (made before the release; primary results) or `backtest` (made afterwards, as-of `forecast_time`). |
 | `metadata_json` | Forecaster-specific details, such as training window or prompt hash. |
 
+### `forecast.llm_calls`
+
+One row per LLM call attempt (including failures), for audit and for reusing answers on reruns.
+
+| Column | Description |
+|--------|-------------|
+| `call_id` | Unique id of the call. |
+| `event_id`, `forecast_time` | The event asked about and its as-of time. |
+| `prompt_version`, `model` | Prompt file version and model name used. |
+| `dry_run` | True for stub calls that never reached the API. |
+| `inputs_hash` | SHA-256 of the structured as-of inputs plus the prompt version. |
+| `sample_index` | Which of the repeated samples this call is. |
+| `requested_at` | Wall-clock time of the call (UTC). |
+| `status` | `ok`, `invalid` (output failed validation), or `error` (call failed). |
+| `prompt_text`, `raw_response` | The exact prompt and the model's raw answer. |
+| `parsed_probabilities` | JSON map of contract to probability for `ok` calls. |
+| `input_tokens`, `output_tokens` | Token usage reported by the API. |
+| `error_message` | Reason for `invalid` or `error`. |
+
 ## Silver and gold (generated from dbt YAML)
 
 Regenerate with `python -m pmeval.warehouse.data_dictionary`. A test fails if this section is stale.

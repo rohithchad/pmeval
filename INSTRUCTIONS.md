@@ -20,6 +20,9 @@ Python 3.11+ is required (the Docker image uses 3.11).
 | `PMEVAL_WAREHOUSE_PATH` | DuckDB file (default `./data/warehouse.duckdb`). |
 | `PMEVAL_FORECAST_HOURS_BEFORE` | Hours before release at which forecasts are made (default 24). |
 | `PMEVAL_LOG_LEVEL` | Logging level (default `INFO`). |
+| `PMEVAL_LLM_MODEL` | Claude model for the LLM forecaster (default `claude-opus-5-5`). |
+| `PMEVAL_LLM_SAMPLES` | Calls per event whose answers are averaged (default 3). |
+| `PMEVAL_LLM_EFFORT` | Thinking effort passed to the model (default `medium`). |
 
 Kalshi public market data needs no key. Never commit `.env`.
 

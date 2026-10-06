@@ -187,7 +187,7 @@ def test_build_predictions_skips_declined_targets():
 
 @pytest.fixture
 def con(dbt_warehouse, tmp_path):
-    copy = tmp_path / "wh.duckdb"
+    copy = tmp_path / "warehouse.duckdb"  # dbt views embed the file name as catalog
     shutil.copy(dbt_warehouse, copy)
     connection = duckdb.connect(str(copy))
     yield connection
@@ -232,3 +232,31 @@ def test_backtest_run_stores_baseline_and_market_predictions(con):
 def test_logreg_declines_on_tiny_fixture_history_without_error(con):
     # The synthetic warehouse has far fewer than 30 resolved contracts, so no predictions result.
     assert run(con, ["logreg"], "backtest", datetime(2026, 10, 1)) == {"logreg": 0}
+
+
+def test_llm_dry_run_end_to_end_makes_no_real_calls(con, monkeypatch):
+    from pmeval import config
+
+    monkeypatch.setattr(
+        "pmeval.forecast.run.get_settings",
+        lambda: config.Settings(_env_file=None, pmeval_llm_samples=2, anthropic_api_key=None),
+    )
+    added = run(con, ["llm_dry_run"], "backtest", datetime(2026, 10, 1))
+    assert added["llm_dry_run"] > 0
+    forecasters = con.execute("select distinct forecaster from forecast.predictions").fetchall()
+    assert forecasters == [("llm_dry_run",)]
+    # every event was asked twice (2 samples), and every call is flagged as a dry run
+    assert con.execute("select count(*) from forecast.llm_calls where not dry_run").fetchone() == (
+        0,
+    )
+
+
+def test_real_llm_forecaster_requires_api_key(con, monkeypatch):
+    from pmeval import config
+
+    monkeypatch.setattr(
+        "pmeval.forecast.run.get_settings",
+        lambda: config.Settings(_env_file=None, anthropic_api_key=None),
+    )
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+        run(con, ["llm"], "backtest", datetime(2026, 10, 1))

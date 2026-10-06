@@ -176,3 +176,31 @@ ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
   events (cluster bootstrap) for that reason.
 - `check_no_lookahead` re-checks every timestamp feature at prediction time and raises
   `LeakageError`.
+
+## D14. LLM forecaster
+- Default model `claude-opus-5-5` (configurable via `PMEVAL_LLM_MODEL`; the cheaper
+  `claude-sonnet-5-5` is an option for large backtests). Billed per token on the Anthropic API,
+  separately from any Claude subscription. Opus 5.5 always thinks and rejects `temperature`, so
+  the averaged samples differ only through the model's own variation. Effort defaults to `medium`.
+- One call set per event covers all of its contracts (asks for one probability per contract),
+  repeated `PMEVAL_LLM_SAMPLES` times (default 3) and averaged. Cost scales with events, not
+  contracts. `--llm-max-events N` limits spend.
+- The model is not shown the market price. If it were, it would mostly echo the market and the
+  comparison would lose meaning.
+- Structured output uses `output_config.format` with a JSON schema; numeric bounds and the exact
+  contract set are re-validated with `jsonschema` afterwards. Invalid answers are logged and skipped.
+- Server-side refusal fallbacks are deliberately NOT enabled: a silent switch to another model would
+  make "which model produced this forecast" untrue. Refusals are logged as errors and the event gets
+  no LLM forecast.
+- Every call is logged to `forecast.llm_calls` (prompt version, model, inputs hash, prompt, raw
+  response, parsed probabilities, tokens, timestamp). Reruns reuse a logged `ok` response for the same
+  (event, prompt version, model, inputs hash, sample), so repeated runs cost nothing.
+- Leakage: inputs carry explicit timestamps; `assert_inputs_as_of` raises `LeakageError` before a call
+  if any is after `forecast_time`. The prompt also tells the model to ignore later knowledge, which is
+  advisory only: a model trained after the event may still remember it.
+- Contamination: LLM predictions made for already-resolved events (`mode = backtest`) are possibly
+  contaminated by training data and must be labeled so wherever shown. Only predictions made live
+  before a release are clean evidence.
+- Dry run: stub client, forecaster name `llm_dry_run`, never mixed with `llm`.
+- dbt views embed the database file name as their catalog. Do not rename `warehouse.duckdb` after a
+  `dbt build` without rebuilding.
