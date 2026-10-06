@@ -1,0 +1,42 @@
+{
+ "cursor": "CgYI8Na31wYSCktYVTMtMjZPQ1Q",
+ "events": [
+  {
+   "category": "Economics",
+   "collateral_return_type": "DIRECNET",
+   "event_ticker": "KXU3-26NOV",
+   "exchange_index": 0,
+   "last_updated_ts": "2026-08-28T20:46:33.79365Z",
+   "mutually_exclusive": false,
+   "series_ticker": "KXU3",
+   "settlement_sources": [
+    {
+     "name": "Bureau of Labor Statistics",
+     "url": "https://www.bls.gov/news.release/empsit.toc.htm"
+    }
+   ],
+   "strike_period": "",
+   "sub_title": "In Nov 2026",
+   "title": "Unemployment in November"
+  },
+  {
+   "category": "Economics",
+   "collateral_return_type": "DIRECNET",
+   "event_ticker": "KXU3-26OCT",
+   "exchange_index": 0,
+   "last_updated_ts": "2026-08-28T20:46:33.79365Z",
+   "mutually_exclusive": false,
+   "series_ticker": "KXU3",
+   "settlement_sources": [
+    {
+     "name": "Bureau of Labor Statistics",
+     "url": "https://www.bls.gov/news.release/empsit.toc.htm"
+    }
+   ],
+   "strike_period": "",
+   "sub_title": "In Oct 2026",
+   "title": "Unemployment in October"
+  }
+ ],
+ "milestones": []
+}

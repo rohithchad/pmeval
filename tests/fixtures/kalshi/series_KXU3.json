@@ -1,0 +1,33 @@
+{
+ "series": {
+  "additional_prohibitions": [
+   "Persons who are employed by any of the Source Agencies are not permitted to trade on the Contract.",
+   "Persons who hold any material, non-public information on the Underlying are not permitted to trade on the Contract."
+  ],
+  "categories": [
+   "Economics"
+  ],
+  "category": "Economics",
+  "contract_terms_url": "https://assets.kalshi.com/contract_terms/U3.pdf",
+  "contract_url": "https://assets.kalshi.com/regulatory/product-certifications/U3.pdf",
+  "exchange_index": 0,
+  "fee_multiplier": 1,
+  "fee_type": "quadratic_with_maker_fees",
+  "frequency": "monthly",
+  "last_updated_ts": "2026-03-24T14:59:28.346529Z",
+  "product_metadata": {
+   "important_info": null
+  },
+  "settlement_sources": [
+   {
+    "name": "Bureau of Labor Statistics",
+    "url": "https://www.bls.gov/news.release/empsit.toc.htm"
+   }
+  ],
+  "tags": [
+   "Jobs & Economy"
+  ],
+  "ticker": "KXU3",
+  "title": "Unemployment"
+ }
+}
