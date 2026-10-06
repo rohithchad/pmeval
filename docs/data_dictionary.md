@@ -67,6 +67,26 @@ Rebuilt from `forecast.predictions` and `marts.fct_outcome` by `python -m pmeval
 Scores: Brier is `(p - outcome)^2`; log loss is `-log` of the probability given to what happened
 (probabilities clipped to [1e-6, 1 - 1e-6]). Lower is better for both.
 
+### `ops.run_log`
+
+Written by the Airflow DAGs through `pmeval.ops`; read by the dashboard's data-health panel.
+
+| Column | Description |
+|--------|-------------|
+| `run_id` | Unique id. |
+| `pipeline`, `step` | DAG name and the step (`dag_run`, `dbt_test`, `source_freshness`, or a failed task id). |
+| `status` | `ok`, `warn` or `failed`. |
+| `recorded_at` | When it was recorded (UTC). |
+| `detail` | Error text, or JSON counts of dbt results (`{"pass": 70}`). |
+
+### `eval.leaderboard`, `eval.comparisons`
+
+Written by `python -m pmeval.eval.compare`. Leaderboard rows: forecaster, version, mode, metric,
+`n_events`, `n_contracts`, `mean_score`, 95% cluster-bootstrap `ci_lower`/`ci_upper`,
+`possibly_contaminated`, `small_sample`. Comparison rows: forecaster pair, metric, mean difference
+(negative favours A) with interval, bootstrap and Diebold-Mariano p-values, `small_sample`.
+See `docs/DECISIONS.md` D15 for assumptions.
+
 ## Silver and gold (generated from dbt YAML)
 
 Regenerate with `python -m pmeval.warehouse.data_dictionary`. A test fails if this section is stale.

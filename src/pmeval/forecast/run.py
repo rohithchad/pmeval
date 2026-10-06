@@ -41,6 +41,7 @@ from pmeval.forecast.market import MarketForecaster
 from pmeval.forecast.model import LogisticModelForecaster
 from pmeval.forecast.predictions import build_predictions, write_predictions
 from pmeval.logging_setup import setup_logging
+from pmeval.pipeline import live_forecaster_names
 from pmeval.warehouse.db import connect
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,11 @@ def run(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=["live", "backtest"], required=True)
-    parser.add_argument("--forecasters", default="base_rate,market,logreg")
+    parser.add_argument(
+        "--forecasters",
+        default="base_rate,market,logreg",
+        help="comma-separated names, or 'auto' for the live set (llm only if a key is set)",
+    )
     parser.add_argument(
         "--llm-max-events",
         type=int,
@@ -137,7 +142,10 @@ def main() -> None:
     con = connect()
     try:
         now = datetime.now(UTC).replace(tzinfo=None)
-        run(con, args.forecasters.split(","), args.mode, now, args.llm_max_events)
+        names = args.forecasters
+        if names == "auto":
+            names = live_forecaster_names(get_settings())
+        run(con, names.split(","), args.mode, now, args.llm_max_events)
     finally:
         con.close()
 

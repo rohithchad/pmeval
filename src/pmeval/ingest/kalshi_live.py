@@ -1,5 +1,9 @@
 """Ingest live-tier Kalshi data for configured series into raw Parquet.
 
+By default only markets with status "open" are fetched: those are the ones that still change, and
+settled markets are covered by the resumable backfill (pmeval.ingest.kalshi_historical). Pass
+--status all to fetch markets of every status.
+
 Run:  python -m pmeval.ingest.kalshi_live            (all series in the registry)
       python -m pmeval.ingest.kalshi_live KXCPIYOY   (one series)
 """
@@ -8,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import time
 from pathlib import Path
 
 from pmeval.config import SERIES_REGISTRY, get_settings
@@ -22,13 +27,20 @@ SOURCE = "kalshi"
 
 
 def ingest_series(
-    client: KalshiClient, raw_dir: Path, series_ticker: str, period: int = 60
+    client: KalshiClient,
+    raw_dir: Path,
+    series_ticker: str,
+    period: int = 60,
+    status: str | None = "open",
 ) -> None:
-    """Ingest the series record, its events, markets and candlesticks."""
+    """Ingest the series record, its events, and the candlesticks of its markets with `status`.
+
+    status=None fetches markets of every status.
+    """
     write_raw(raw_dir, SOURCE, "series", [client.get_series(series_ticker)])
     params = {"series_ticker": series_ticker}
     write_raw(raw_dir, SOURCE, "events", client.iter_events(series_ticker), params)
-    markets = list(client.iter_markets(series_ticker=series_ticker))
+    markets = list(client.iter_markets(series_ticker=series_ticker, status=status))
     write_raw(raw_dir, SOURCE, "markets", markets, params)
     for market in markets:
         ingest_market_candlesticks(client, raw_dir, series_ticker, market, period)
@@ -37,10 +49,11 @@ def ingest_series(
 def ingest_market_candlesticks(
     client: KalshiClient, raw_dir: Path, series_ticker: str, market: dict, period: int
 ) -> None:
-    """Fetch candlesticks from the market's open_time to its close_time."""
+    """Fetch candlesticks from the market's open_time to its close_time (or now, if earlier)."""
     ticker = market["ticker"]
     start = parse_iso_to_unix(market.get("open_time"))
-    end = parse_iso_to_unix(market.get("close_time"))
+    close = parse_iso_to_unix(market.get("close_time"))
+    end = None if close is None else min(close, int(time.time()))
     if start is None or end is None:
         logger.warning("skipping candlesticks for %s: missing open/close time", ticker)
         return
@@ -53,6 +66,9 @@ def ingest_market_candlesticks(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("series", nargs="*", help="Kalshi series tickers (default: registry)")
+    parser.add_argument(
+        "--status", default="open", help="market status to fetch, or 'all' (default: open)"
+    )
     args = parser.parse_args()
     settings = get_settings()
     setup_logging(settings.pmeval_log_level)
@@ -60,7 +76,12 @@ def main() -> None:
     tickers = args.series or [spec.kalshi_series_ticker for spec in SERIES_REGISTRY]
     for ticker in tickers:
         logger.info("ingesting live data for %s", ticker)
-        ingest_series(client, settings.pmeval_raw_dir, ticker)
+        ingest_series(
+            client,
+            settings.pmeval_raw_dir,
+            ticker,
+            status=None if args.status == "all" else args.status,
+        )
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ MAX_PAGE_SIZE = 1000
 CANDLE_WINDOW_SECONDS = 30 * 24 * 3600
 
 
-def make_http_client(min_interval_seconds: float = 0.2) -> HttpClient:
+def make_http_client(min_interval_seconds: float = 0.5) -> HttpClient:
     """Build an HttpClient pointed at the configured Kalshi base URL."""
     return HttpClient(get_settings().kalshi_base_url, min_interval_seconds=min_interval_seconds)
 

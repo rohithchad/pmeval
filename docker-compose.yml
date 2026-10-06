@@ -15,6 +15,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     PMEVAL_RAW_DIR: /opt/airflow/data/raw
     PMEVAL_WAREHOUSE_PATH: /opt/airflow/data/warehouse.duckdb
+    PMEVAL_ALERT_WEBHOOK_URL: ${PMEVAL_ALERT_WEBHOOK_URL:-}
+    PYTHONPATH: /opt/airflow/dags
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./dbt_project:/opt/airflow/dbt_project
@@ -57,6 +59,7 @@ services:
       - -c
       - |
         airflow db migrate &&
+        airflow pools set duckdb 1 "single writer for the DuckDB warehouse" &&
         airflow users create --username admin --firstname Admin --lastname User \
           --role Admin --email admin@example.com \
           --password "$${AIRFLOW_ADMIN_PASSWORD:-admin}"

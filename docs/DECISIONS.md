@@ -28,7 +28,7 @@ historical endpoints), read 2026-10-06.
 - Live candlesticks use `period_interval` 1, 60 or 1440 and nested `*_dollars` fields. A candle
   with no trades has an empty `price` object (`{}`); staging must treat it as null.
 - The docs state no cap on candles per request. As a precaution the client requests 30-day windows.
-- Rate limits: token buckets per tier; 429 has no `Retry-After`. We stay near 5 requests/second.
+- Rate limits: token buckets per tier; 429 has no `Retry-After`. Unauthenticated access returned HTTP 429 at about 5 requests/second during live runs (the retry/backoff handled it), so the default spacing is 0.5 seconds (2 requests/second).
 - Series tickers in `SERIES_REGISTRY` were confirmed to exist on 2026-10-06:
   `KXCPIYOY`, `KXPAYROLLS`, `KXU3`, `KXGDP`, `KXFEDDECISION`. Kalshi has many other CPI/jobs
   series (for example `KXCPI`, `KXECONSTATCPI`, `KXECONSTATU3`, `KXFED`). Which of them
@@ -243,3 +243,30 @@ Small-sample limits:
   are possibly contaminated by training data and must be labeled so (`possibly_contaminated`).
 - The comparison covers forecast quality only. It says nothing about whether any forecaster could
   make money after fees and spreads, and nothing here is financial advice.
+
+## D16. Orchestration
+- Four DAGs: `daily_ingest` (06:00 UTC), `pre_release` (hourly), `post_release` (hourly),
+  `weekly_quality` (Mondays 07:00 UTC). All start paused (`DAGS_ARE_PAUSED_AT_CREATION`), so nothing
+  runs until you unpause it in the UI.
+- Decision logic (which events are due, which await scoring, whether `llm` runs) lives in
+  `pmeval.pipeline`, with unit tests. The DAG files only wire tasks together.
+- `pre_release` and `post_release` short-circuit when there is nothing to do, so hourly schedules
+  cost almost nothing. Features are computed from timestamps, so a run up to an hour after
+  `forecast_time` still uses only information available at `forecast_time`.
+- DuckDB has one writer. Tasks touching the warehouse share an Airflow pool `duckdb` with one slot
+  (created by `airflow-init`); raw ingestion only writes Parquet and runs in parallel.
+- Idempotency: ingestion appends raw files (dbt de-duplicates), bronze is `CREATE OR REPLACE`, dbt
+  rebuilds, predictions are insert-only, scores are rebuilt, backfill resumes from its state file.
+- The daily live ingest fetches only `open` markets (they are the ones that still change); settled
+  markets come from the resumable backfill, which also runs daily and after releases.
+- Failure alerts: every task has `on_failure_callback = notify_failure`, which logs, writes
+  `ops.run_log`, and posts to `PMEVAL_ALERT_WEBHOOK_URL` if set. Retries: 3, exponential backoff
+  from 5 minutes up to 60.
+- `weekly_quality` records dbt test and freshness results in `ops.run_log` even when they fail, then
+  fails the task so the alert fires.
+- Airflow admin login for the local stack defaults to admin/admin (`AIRFLOW_ADMIN_PASSWORD` in `.env`
+  changes it). It is for localhost only. No external credentials are needed to run Airflow; API keys
+  reach the tasks through `.env` (compose `env_file`).
+- DuckDB file format is not backward compatible, and Airflow's constrained Python environment shipped
+  DuckDB 1.1.3 while the dbt virtualenv installed 1.5.x. The Airflow Dockerfile therefore pins the same
+  `DUCKDB_VERSION` in both environments (found by inspecting the built image).
