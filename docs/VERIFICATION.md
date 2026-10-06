@@ -15,3 +15,4 @@ service and the output was observed. "Mocks only" means unit tests with recorded
 | FRED client: first-release observations (CPIAUCSL, PAYEMS, UNRATE, GDPC1) and unrevised DFEDTARU | Live on 2026-10-06 with the user's FRED key; fixtures recorded from it |
 | Release calendar (FRED release dates for CPI, jobs, GDP) | Live on 2026-10-06 to a scratch directory |
 | Fed statement + meeting ingestion | Live on 2026-10-06 (47 statements, 57 meetings) to a scratch directory |
+| dbt staging models on real raw data (Kalshi sample, FRED, calendar, Fed) | Run on 2026-10-06 against a scratch warehouse built from real ingested data; unit-tested on synthetic fixtures |

@@ -78,3 +78,43 @@ def test_candles_handle_both_tier_shapes_and_null_prices(warehouse):
 
 def test_trades_deduplicated_across_reingestion(warehouse):
     assert query(warehouse, "select count(*) from staging.stg_kalshi__trades") == [(1,)]
+
+
+def test_fred_first_release_dates(warehouse):
+    rows = query(
+        warehouse,
+        "select observation_date::varchar, value, first_released_on::varchar "
+        "from staging.stg_fred__observations order by observation_date",
+    )
+    assert rows[1] == ("2026-04-01", 4.0, "2026-05-08")
+    assert len(rows) == 4
+
+
+def test_release_calendar_converted_to_utc_with_dst(warehouse):
+    # 08:30 America/New_York on 2026-06-05 is EDT (UTC-4), so 12:30 UTC
+    rows = query(
+        warehouse,
+        "select release_at::varchar from staging.stg_fred__release_calendar "
+        "where release_date = date '2026-06-05'",
+    )
+    assert rows == [("2026-06-05 12:30:00",)]
+
+
+def test_fed_statement_publication_time(warehouse):
+    rows = query(
+        warehouse,
+        "select published_at::varchar, release_time_is_assumed from staging.stg_fed__statements "
+        "order by published_at",
+    )
+    # 2:00 p.m. EDT is 18:00 UTC; the page without a release line is assumed to be 14:00 too
+    assert rows == [("2026-04-29 18:00:00", True), ("2026-06-17 18:00:00", False)]
+
+
+def test_fed_meeting_dates_parsed(warehouse):
+    rows = query(
+        warehouse,
+        "select meeting_end_date::varchar, has_statement from staging.stg_fed__meetings "
+        "order by meeting_end_date",
+    )
+    # "30-1" with month "Apr/May" ends on May 1
+    assert rows == [("2026-04-29", False), ("2026-05-01", False), ("2026-06-17", True)]
