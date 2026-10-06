@@ -204,3 +204,42 @@ ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
 - Dry run: stub client, forecaster name `llm_dry_run`, never mixed with `llm`.
 - dbt views embed the database file name as their catalog. Do not rename `warehouse.duckdb` after a
   `dbt build` without rebuilding.
+
+## D15. Statistical comparison: assumptions and limits
+What is computed (`pmeval.eval.compare`, tables `eval.leaderboard` and `eval.comparisons`):
+- Per forecaster: mean Brier and mean log loss with a 95% percentile interval from a **cluster
+  bootstrap** (10,000 replicates, fixed seed, so results are reproducible).
+- Per pair: mean loss difference `d = loss(A) - loss(B)` (negative means A is better) with a cluster
+  bootstrap interval and p-value, and a **Diebold-Mariano test** on per-event mean differences.
+
+Why clusters: contracts of one release resolve from one number and move together, so they are not
+independent. Resampling single contracts would understate uncertainty (a test shows the cluster
+interval is far wider when contracts are perfectly correlated). The unit of resampling is the event.
+
+Assumptions:
+1. Events are exchangeable enough to resample with replacement. Economic regimes shift, so a
+   forecaster that wins in one period may not in another; the bootstrap cannot detect that.
+2. Diebold-Mariano is applied at a one-step horizon with each event's mean differential as one
+   observation, ignoring serial correlation between consecutive releases of the same series. If
+   differentials are positively autocorrelated, p-values are too optimistic. The
+   Harvey-Leybourne-Newbold small-sample correction and a t distribution with n-1 degrees of
+   freedom are used.
+3. Forecasters are compared on **common support**: only contracts every compared forecaster
+   predicted. The logistic model declines early events and the market declines contracts without a
+   price, so this can shrink the sample a lot. Counts are always reported.
+4. Only the newest version of each forecaster is used; `llm_dry_run` (the stub) is excluded.
+5. Log loss clips probabilities to [1e-6, 1 - 1e-6]. A forecaster that says 0 or 1 and is wrong gets
+   a large, finite penalty.
+6. The p-values are not adjusted for the many pairwise comparisons, so with several forecasters,
+   two metrics and two modes, some small p-values will arise by chance.
+
+Small-sample limits:
+- Real history is on the order of 100 to 200 events across all series, fewer after common-support
+  filtering, and far fewer for live predictions (there are only a few releases per month). Any row
+  with fewer than 30 events is flagged `small_sample`; treat its intervals and p-values as rough.
+- With few events, percentile bootstrap intervals are typically too narrow, and a non-significant
+  result means "cannot tell", not "equal".
+- Live results will take months to accumulate. Backtests are available immediately, but LLM backtests
+  are possibly contaminated by training data and must be labeled so (`possibly_contaminated`).
+- The comparison covers forecast quality only. It says nothing about whether any forecaster could
+  make money after fees and spreads, and nothing here is financial advice.
