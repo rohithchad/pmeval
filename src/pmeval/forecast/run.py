@@ -21,8 +21,14 @@ import pandas as pd
 from pmeval.config import get_settings
 from pmeval.forecast.base import Forecaster
 from pmeval.forecast.baseline import BaseRateForecaster
-from pmeval.forecast.data import frame_to_targets, load_history, load_target_frame
+from pmeval.forecast.data import (
+    frame_to_targets,
+    load_history,
+    load_model_frame,
+    load_target_frame,
+)
 from pmeval.forecast.market import MarketForecaster
+from pmeval.forecast.model import LogisticModelForecaster
 from pmeval.forecast.predictions import build_predictions, write_predictions
 from pmeval.logging_setup import setup_logging
 from pmeval.warehouse.db import connect
@@ -43,6 +49,7 @@ def build_forecasters(con: duckdb.DuckDBPyConnection, names: list[str]) -> list[
     available = {
         "base_rate": lambda: BaseRateForecaster(load_history(con)),
         "market": lambda: MarketForecaster(),
+        "logreg": lambda: LogisticModelForecaster(load_model_frame(con)),
     }
     unknown = [name for name in names if name not in available]
     if unknown:
@@ -66,7 +73,7 @@ def run(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=["live", "backtest"], required=True)
-    parser.add_argument("--forecasters", default="base_rate,market")
+    parser.add_argument("--forecasters", default="base_rate,market,logreg")
     args = parser.parse_args()
     setup_logging(get_settings().pmeval_log_level)
     con = connect()

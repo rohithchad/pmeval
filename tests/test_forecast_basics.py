@@ -227,3 +227,8 @@ def test_backtest_run_stores_baseline_and_market_predictions(con):
     assert "KXU3-26JUL-T4.5|market" not in rows
     # rerunning adds nothing
     assert sum(run(con, ["base_rate", "market"], "backtest", now).values()) == 0
+
+
+def test_logreg_declines_on_tiny_fixture_history_without_error(con):
+    # The synthetic warehouse has far fewer than 30 resolved contracts, so no predictions result.
+    assert run(con, ["logreg"], "backtest", datetime(2026, 10, 1)) == {"logreg": 0}

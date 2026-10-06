@@ -157,3 +157,22 @@ ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
 - Fed contracts encode the action in the ticker suffix (`H0` hold, `H25` hike 25 bps, `C25` cut 25
   bps, `H26`/`C26` more than 25 bps). `contract_bps` is the signed number.
 - After changing seed columns, run `dbt build --full-refresh`.
+
+## D13. Forecasters and predictions
+- `forecast.predictions` is insert-only (`ON CONFLICT DO NOTHING`), keyed by event, contract,
+  forecaster and version. A rerun keeps the first prediction, so a live forecast cannot be replaced
+  after the outcome is known. Live rows must have `made_at < release_at`; backtest rows carry
+  `mode = 'backtest'`.
+- Base rate: smoothed share of YES among earlier settled contracts of the same series, using only
+  contracts with `settled_at <= forecast_time`.
+- Market forecaster: the price from `fct_market_forecast`; declines when there is none.
+- Logistic regression: one model per series, trained walk-forward on contracts settled by the
+  target's forecast_time, inputs standardised, L2 with C = 1. Inputs are the strike's distance from
+  the last known figure and the latest change (threshold series) or hold/hike/cut indicators and the
+  latest change (Fed). It declines with fewer than 30 earlier contracts or one outcome class. Model
+  version, features, `n_train` and training window are stored in `metadata_json`. Contracts of one
+  event are correlated, so effective sample size is smaller than the contract count.
+- Forecasts are per contract, so each event contributes several rows. Evaluation resamples whole
+  events (cluster bootstrap) for that reason.
+- `check_no_lookahead` re-checks every timestamp feature at prediction time and raises
+  `LeakageError`.

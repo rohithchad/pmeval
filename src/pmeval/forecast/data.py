@@ -57,6 +57,32 @@ ORDER BY events.release_at, outcomes.market_ticker
 """
 
 
+MODEL_FRAME_SQL = f"""
+SELECT
+    features.event_id,
+    features.market_ticker,
+    features.series_key,
+    events.forecast_time,
+    events.release_at,
+    outcomes.outcome,
+    outcomes.settled_at,
+    {", ".join("features." + column for column in FEATURE_COLUMNS)}
+FROM marts.fct_features_asof AS features
+INNER JOIN marts.dim_event AS events USING (event_id)
+INNER JOIN marts.fct_outcome AS outcomes USING (event_id, market_ticker)
+WHERE outcomes.outcome IS NOT NULL
+ORDER BY events.release_at, features.market_ticker
+"""
+
+
+def load_model_frame(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    """Resolved contracts with as-of features and outcomes, for training the statistical model.
+
+    Callers must filter by settled_at <= forecast_time of the target (walk-forward).
+    """
+    return con.execute(MODEL_FRAME_SQL).df()
+
+
 def load_target_frame(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     """All contracts with their as-of features, market price and event timing."""
     return con.execute(TARGETS_SQL).df()
