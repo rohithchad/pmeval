@@ -54,6 +54,19 @@ One row per LLM call attempt (including failures), for audit and for reusing ans
 | `input_tokens`, `output_tokens` | Token usage reported by the API. |
 | `error_message` | Reason for `invalid` or `error`. |
 
+### `eval.scores`, `eval.score_summary`, `eval.calibration_bins`
+
+Rebuilt from `forecast.predictions` and `marts.fct_outcome` by `python -m pmeval.eval.scoring`.
+
+| Table | Grain and columns |
+|-------|-------------------|
+| `eval.scores` | One row per scored prediction: the prediction columns, `outcome` (0/1), `brier`, `log_loss`, `possibly_contaminated` (true for LLM backtests), `scored_at`. |
+| `eval.score_summary` | Per forecaster, version, mode and series (plus `all`): `n_contracts`, `n_events`, `mean_brier`, `mean_log_loss`, `mean_probability`, `yes_rate`. |
+| `eval.calibration_bins` | Per forecaster, version and mode: `bin_lower`, `bin_upper`, `count`, `mean_predicted`, `observed_frequency`. |
+
+Scores: Brier is `(p - outcome)^2`; log loss is `-log` of the probability given to what happened
+(probabilities clipped to [1e-6, 1 - 1e-6]). Lower is better for both.
+
 ## Silver and gold (generated from dbt YAML)
 
 Regenerate with `python -m pmeval.warehouse.data_dictionary`. A test fails if this section is stale.
