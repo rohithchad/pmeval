@@ -270,3 +270,16 @@ Small-sample limits:
 - DuckDB file format is not backward compatible, and Airflow's constrained Python environment shipped
   DuckDB 1.1.3 while the dbt virtualenv installed 1.5.x. The Airflow Dockerfile therefore pins the same
   `DUCKDB_VERSION` in both environments (found by inspecting the built image).
+
+## D17. Dashboard
+- Reads the warehouse only, through a read-only DuckDB connection (`pmeval.app_data`), and shows
+  "no data yet" or `[N]` placeholders when tables are empty. It never computes statistics itself; it
+  displays `eval.*`, `forecast.predictions`, `marts.*` and `ops.run_log`.
+- LLM backtests are labeled "possibly contaminated by training data" in the legend, tables and a red
+  banner whenever they appear; `llm_dry_run` is excluded everywhere.
+- A "not financial advice" notice is shown at the top and bottom.
+- Each forecaster has a fixed colour from the validated categorical palette, so filters never repaint
+  a forecaster. Intervals are drawn as whiskers with the point estimate; a table view sits below.
+- DuckDB connections now set `python_enable_replacements = false`, because a query on a missing table
+  named like a Python variable (`leaderboard`) otherwise raised a confusing error instead of a
+  catalog error.
