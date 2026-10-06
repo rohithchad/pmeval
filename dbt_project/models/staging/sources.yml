@@ -1,0 +1,24 @@
+version: 2
+
+# Bronze views are created by `python -m pmeval.warehouse.bronze`. Each row holds one raw API
+# record as JSON text in `payload`, plus request_params, ingested_at and hive columns.
+sources:
+  - name: bronze
+    schema: bronze
+    description: Untouched API responses registered from raw Parquet files.
+    tables:
+      - name: kalshi_series
+      - name: kalshi_events
+      - name: kalshi_markets
+      - name: kalshi_candlesticks
+      - name: kalshi_live_markets
+      - name: kalshi_live_candlesticks
+      - name: kalshi_live_trades
+      - name: kalshi_historical_cutoff
+      - name: kalshi_historical_markets
+      - name: kalshi_historical_candlesticks
+      - name: kalshi_historical_trades
+      - name: fred_observations
+      - name: fred_release_calendar
+      - name: fed_fomc_statements
+      - name: fed_fomc_meetings

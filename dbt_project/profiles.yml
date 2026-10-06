@@ -1,0 +1,10 @@
+# Profile used by dbt for this project. The warehouse path comes from the same
+# environment variable the Python code uses, so both always see one database.
+# Run dbt from the dbt_project directory with: dbt build --profiles-dir .
+pmeval:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('PMEVAL_WAREHOUSE_PATH', '../data/warehouse.duckdb') }}"
+      threads: 1

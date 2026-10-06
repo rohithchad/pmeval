@@ -1,0 +1,22 @@
+name: pmeval
+version: "0.1.0"
+config-version: 2
+profile: pmeval
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+
+vars:
+  # Hours before the scheduled release at which every forecast is made.
+  forecast_hours_before: 24
+
+models:
+  pmeval:
+    staging:
+      +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: marts

@@ -95,3 +95,16 @@ Checkpoint review (rule 9, before commit 9): no source needs registration or has
 reruns are safe, and new raw files appear immediately. Datasets with no files yet get empty
 placeholder views (standard raw columns) so dbt models compile before every source has been
 ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
+
+## D9. dbt setup
+- Schemas are exactly `staging` and `marts` (custom `generate_schema_name`). Run dbt from
+  `dbt_project/` with `--profiles-dir .`; the warehouse path comes from `PMEVAL_WAREHOUSE_PATH`.
+- All timestamps in staging and marts are naive UTC `TIMESTAMP`.
+- Staging reads fields from raw JSON with `json_extract_string`; live and historical candlesticks
+  use different field names, so both are read with `coalesce`.
+- Market-implied probability is the dollar price of a $1 YES contract; no conversion factor needed.
+- Local setup quirk on macOS with a python.org Python: installing `dbt-core` 1.11+ downloads a
+  wheel at build time and fails with `CERTIFICATE_VERIFY_FAILED`. Fix:
+  `export SSL_CERT_FILE=$(python -c "import certifi; print(certifi.where())")` before `pip install`.
+- dbt tests run against a synthetic fixture warehouse (`tests/fixture_warehouse.py`). Its numbers
+  are made up for testing and are labelled synthetic; only field shapes copy real responses.

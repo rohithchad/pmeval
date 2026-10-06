@@ -84,7 +84,7 @@ def create_empty_view(con: duckdb.DuckDBPyConnection, source: str, dataset: str)
     con.execute(
         f"CREATE OR REPLACE VIEW {BRONZE_SCHEMA}.{source}_{dataset} AS "
         "SELECT CAST(NULL AS VARCHAR) AS payload, CAST(NULL AS VARCHAR) AS request_params, "
-        "CAST(NULL AS TIMESTAMP) AS ingested_at, "
+        "CAST(NULL AS TIMESTAMPTZ) AS ingested_at, "
         f"'{source}' AS source, '{dataset}' AS dataset, CAST(NULL AS DATE) AS ingest_date "
         "WHERE false"
     )
