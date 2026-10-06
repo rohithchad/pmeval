@@ -82,7 +82,13 @@ def write_kalshi(raw: Path) -> None:
             "KXFEDDECISION-26JUN-H0", "KXFEDDECISION-26JUN", 0.0, "yes", "2026-06-17T17:59:00Z"
         )
     ]
-    write_raw(raw, "kalshi", "live_markets", jun + jul + fed, ingested_at=INGESTED)
+    # An older event named without the KX prefix, as Kalshi's early Fed events are.
+    legacy = [
+        kalshi_market(
+            "FEDDECISION-26APR-H0", "FEDDECISION-26APR", 0.0, "yes", "2026-04-29T17:59:00Z"
+        )
+    ]
+    write_raw(raw, "kalshi", "live_markets", jun + jul + fed + legacy, ingested_at=INGESTED)
     # May event: release 2026-06-05 12:30Z, forecast_time 2026-06-04 12:30Z (epoch 1780576200).
     forecast = 1780576200
     candles = [
@@ -156,6 +162,18 @@ def write_fred_and_calendar(raw: Path) -> None:
             "realtime_end": "9999-12-31",
         }
         for day, value, released in observations
+    ]
+    # Fed target (never revised): the rate in force on each day, known from the end of that day.
+    rows += [
+        {
+            "series_id": "DFEDTARU",
+            "vintage_policy": "unrevised",
+            "date": day,
+            "value": value,
+            "realtime_start": "2026-10-01",
+            "realtime_end": "2026-10-01",
+        }
+        for day, value in [("2026-06-15", "4.25"), ("2026-06-16", "4.25"), ("2026-06-17", "4.00")]
     ]
     write_raw(raw, "fred", "observations", rows, ingested_at=INGESTED)
     calendar = [

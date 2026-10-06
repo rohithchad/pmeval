@@ -21,24 +21,29 @@ DBT_PROJECT = Path(__file__).parent.parent / "dbt_project"
 pytestmark = pytest.mark.skipif(not Path(DBT).exists(), reason="dbt is not installed")
 
 
+def run_dbt(root: Path, warehouse_path: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run a dbt command against one warehouse file, keeping dbt's output inside `root`."""
+    env = {
+        **os.environ,
+        "PMEVAL_WAREHOUSE_PATH": str(warehouse_path),
+        "DBT_TARGET_PATH": str(root / "target"),
+    }
+    return subprocess.run(
+        [DBT, *args, "--profiles-dir", ".", "--log-path", str(root / "logs")],
+        cwd=DBT_PROJECT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+
 @pytest.fixture(scope="module")
 def warehouse(tmp_path_factory):
     """Build the fixture warehouse once, run `dbt build`, and return its path."""
     root = tmp_path_factory.mktemp("dbt")
     path = root / "warehouse.duckdb"
     fixture_warehouse.build(root / "raw", path)
-    env = {
-        **os.environ,
-        "PMEVAL_WAREHOUSE_PATH": str(path),
-        "DBT_TARGET_PATH": str(root / "target"),
-    }
-    result = subprocess.run(
-        [DBT, "build", "--profiles-dir", ".", "--log-path", str(root / "logs")],
-        cwd=DBT_PROJECT,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+    result = run_dbt(root, path, "build")
     assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-1000:]
     return path
 
@@ -85,7 +90,8 @@ def test_fred_first_release_dates(warehouse):
     rows = query(
         warehouse,
         "select observation_date::varchar, value, first_released_on::varchar "
-        "from staging.stg_fred__observations order by observation_date",
+        "from staging.stg_fred__observations where fred_series_id = 'UNRATE' "
+        "order by observation_date",
     )
     assert rows[1] == ("2026-04-01", 4.0, "2026-05-08")
     assert len(rows) == 4
@@ -128,6 +134,7 @@ def test_dim_event_release_and_forecast_times(warehouse):
         "from marts.dim_event order by event_id",
     )
     assert rows == [
+        ("FEDDECISION-26APR", "2026-04-29 18:00:00", "2026-04-28 18:00:00", "fed_calendar"),
         # statement published 18:00 UTC; forecast 24h earlier
         ("KXFEDDECISION-26JUN", "2026-06-17 18:00:00", "2026-06-16 18:00:00", "fed_calendar"),
         ("KXU3-26JUL", "2026-08-07 12:29:00", "2026-08-06 12:29:00", "kalshi_close_time"),
@@ -173,3 +180,55 @@ def test_market_forecast_has_one_row_per_contract(warehouse):
         "select count(*) = count(distinct (event_id, market_ticker)) "
         "from marts.fct_market_forecast",
     ) == [(True,)]
+
+
+def test_features_exclude_everything_released_after_forecast_time(warehouse):
+    rows = query(
+        warehouse,
+        "select market_ticker, last_value, prev_value, mean_prior_12, strike_minus_last_value, "
+        "last_value_available_at::varchar from marts.fct_features_asof "
+        "where market_ticker like 'KXU3-26%' order by 1",
+    )
+    by_ticker = {row[0]: row[1:] for row in rows}
+    # MAY forecast time 2026-06-04 12:30: the 4.1 reading is released 2026-06-05, so it is unseen
+    may = by_ticker["KXU3-26MAY-T4.0"]
+    assert may[0] == 4.0 and may[1] == 3.9 and may[2] == 3.9
+    assert abs(may[3]) < 1e-9
+    assert may[4] == "2026-05-08 12:30:00"
+    # JUN forecast time 2026-07-01 12:30: 4.1 is known, 4.3 (released 2026-07-02) is not
+    assert by_ticker["KXU3-26JUN-T4.2"][0] == 4.1
+
+
+def test_fed_features_use_only_data_known_before_forecast_time(warehouse):
+    rows = query(
+        warehouse,
+        "select last_value, contract_bps, latest_statement_path, "
+        "latest_statement_published_at::varchar from marts.fct_features_asof "
+        "where market_ticker = 'KXFEDDECISION-26JUN-H0'",
+    )
+    # Forecast time is 2026-06-16 18:00. The 06-15 rate is known; 06-16 only becomes known at the
+    # end of that day. The June statement comes after forecast time, so April's is the latest.
+    assert rows == [(4.25, 0, "/p/m0429.htm", "2026-04-29 18:00:00")]
+
+
+def test_legacy_series_ticker_without_kx_prefix_is_matched(warehouse):
+    rows = query(
+        warehouse,
+        "select kalshi_series_ticker from marts.dim_event where event_id = 'FEDDECISION-26APR'",
+    )
+    assert rows == [("KXFEDDECISION",)]
+
+
+def test_look_ahead_guard_fails_when_a_feature_timestamp_is_too_late(warehouse, tmp_path):
+    broken = tmp_path / "broken.duckdb"
+    shutil.copy(warehouse, broken)
+    con = duckdb.connect(str(broken))
+    con.execute(
+        "update marts.fct_features_asof "
+        "set last_value_available_at = forecast_time + interval 1 hour "
+        "where last_value_available_at is not null"
+    )
+    con.close()
+    result = run_dbt(tmp_path, broken, "test", "--select", "fct_features_asof")
+    assert result.returncode != 0
+    assert "not_after_forecast_time" in result.stdout

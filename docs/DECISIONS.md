@@ -132,3 +132,28 @@ ingested. The expected dataset list lives in `EXPECTED_DATASETS`.
 - `outcome` is 1 for result `yes`, 0 for `no`, NULL for anything else.
 - Ran on real data on 2026-10-06 (3 settled KXU3 contracts) and produced plausible rows; the three
   outcomes there are all 0 with market prices of 0.02.
+
+## D12. Point-in-time features
+- `int_fred__headline_metrics` converts first-release levels into the figure each Kalshi contract
+  asks about: unemployment rate (level), payroll change (persons, PAYEMS x 1000), CPI year-over-year
+  percent change, annualized quarter-over-quarter real GDP growth, Fed target upper bound (level).
+  Transform and look-back are columns of the `series_registry` seed. Prior values are found by date,
+  so a missing release (the skipped October 2025 CPI) cannot misalign comparisons.
+- Known approximation: official payroll and GDP growth figures use the prior period as revised in
+  the same report; we use the prior period's first release. CPI uses the seasonally adjusted index
+  `CPIAUCSL`, while the Kalshi CPI contract reads BLS's published one-decimal year-over-year
+  figure, which is based on the unadjusted index. Features are therefore close to, not identical
+  with, the published numbers. They are only used as model inputs; outcomes come from Kalshi.
+- Availability of a first-release value is the calendar date plus the series' usual release time.
+  A value is used only if `available_at <= forecast_time`. Never-revised Fed target values are
+  treated as known from 00:00 UTC the day after the observation date.
+- `fct_features_asof` carries every timestamp used, and the custom generic test
+  `not_after_forecast_time` fails when any of them is later than `forecast_time`. A pytest case
+  proves the test fails when a timestamp is deliberately made too late.
+- Kalshi renamed its series: older events are `FEDDECISION-23DEC`, newer ones `KXFEDDECISION-26JUN`.
+  Matching strips the `KX` prefix. Historical data depth seen on 2026-10-06: Fed decisions from May
+  2023, CPI from December 2022, payrolls from April 2023, unemployment from August 2021, GDP from
+  July 2021 (roughly 190 events in total, before any filtering), so sample sizes are small.
+- Fed contracts encode the action in the ticker suffix (`H0` hold, `H25` hike 25 bps, `C25` cut 25
+  bps, `H26`/`C26` more than 25 bps). `contract_bps` is the signed number.
+- After changing seed columns, run `dbt build --full-refresh`.

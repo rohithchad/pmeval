@@ -18,6 +18,8 @@ parsed as (
         {{ jstr('ticker') }}                                         as market_ticker,
         {{ jstr('event_ticker') }}                                   as event_ticker,
         split_part({{ jstr('event_ticker') }}, '-', 1)               as series_ticker,
+        regexp_replace(split_part({{ jstr('event_ticker') }}, '-', 1), '^KX', '')
+                                                                     as series_root,
         {{ jstr('title') }}                                          as title,
         {{ jstr('subtitle') }}                                       as subtitle,
         {{ jstr('status') }}                                         as status,

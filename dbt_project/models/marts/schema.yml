@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: fct_features_asof
+    description: >
+      Point-in-time features per event contract. Every timestamp column must be at or before
+      forecast_time.
+    columns:
+      - name: forecast_time
+      - name: last_value_available_at
+        data_tests:
+          - not_after_forecast_time
+      - name: prev_value_available_at
+        data_tests:
+          - not_after_forecast_time
+      - name: latest_statement_published_at
+        data_tests:
+          - not_after_forecast_time
+      - name: latest_feature_available_at
+        data_tests:
+          - not_after_forecast_time

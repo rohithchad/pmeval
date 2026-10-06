@@ -6,6 +6,8 @@
          14:00 America/New_York on the meeting's last day when the statement is not yet out.
       3. Fallback: the market close time Kalshi sets. This is flagged in release_time_source
          so it can be reviewed.
+    Series match on the ticker without its KX prefix: older Kalshi events are named
+    FEDDECISION-23DEC while current ones are KXFEDDECISION-26JUN.
     Matching to the calendar uses the New York calendar date of the market close time.
 
     forecast_time = release_at minus forecast_hours_before (see macro forecast_time). -#}
@@ -26,7 +28,7 @@ events as (
 
     select
         markets.event_ticker                                          as event_id,
-        markets.series_ticker                                         as kalshi_series_ticker,
+        registry.kalshi_series_ticker,
         registry.series_key,
         registry.release_name,
         min(markets.open_at)                                          as event_open_at,
@@ -36,8 +38,9 @@ events as (
         min(markets.rules_primary)                                    as resolution_definition
     from markets
     inner join registry
-        on markets.series_ticker = registry.kalshi_series_ticker
-    group by markets.event_ticker, markets.series_ticker, registry.series_key, registry.release_name
+        on markets.series_root = regexp_replace(registry.kalshi_series_ticker, '^KX', '')
+    group by markets.event_ticker, registry.kalshi_series_ticker, registry.series_key,
+        registry.release_name
 
 ),
 

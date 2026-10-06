@@ -1,6 +1,6 @@
-series_key,fred_series_id,kalshi_series_ticker,release_name,release_time_et,is_revised
-cpi,CPIAUCSL,KXCPIYOY,Consumer Price Index,08:30,true
-payrolls,PAYEMS,KXPAYROLLS,Employment Situation,08:30,true
-unemployment,UNRATE,KXU3,Employment Situation,08:30,true
-gdp,GDPC1,KXGDP,Gross Domestic Product,08:30,true
-fed,DFEDTARU,KXFEDDECISION,FOMC Meeting,14:00,false
+series_key,fred_series_id,kalshi_series_ticker,release_name,release_time_et,is_revised,headline_transform,transform_lag_months
+cpi,CPIAUCSL,KXCPIYOY,Consumer Price Index,08:30,true,yoy_pct,12
+payrolls,PAYEMS,KXPAYROLLS,Employment Situation,08:30,true,change_x1000,1
+unemployment,UNRATE,KXU3,Employment Situation,08:30,true,level,0
+gdp,GDPC1,KXGDP,Gross Domestic Product,08:30,true,annualized_qoq_pct,3
+fed,DFEDTARU,KXFEDDECISION,FOMC Meeting,14:00,false,level,0
