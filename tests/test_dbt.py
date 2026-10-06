@@ -3,49 +3,20 @@
 Skipped when dbt is not installed. These tests never touch the network.
 """
 
-import os
 import shutil
-import subprocess
-import sys
-from pathlib import Path
 
 import duckdb
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent))
-import fixture_warehouse  # noqa: E402
+from dbt_helpers import dbt_available, run_dbt
 
-DBT = shutil.which("dbt") or str(Path(sys.executable).parent / "dbt")
-DBT_PROJECT = Path(__file__).parent.parent / "dbt_project"
-
-pytestmark = pytest.mark.skipif(not Path(DBT).exists(), reason="dbt is not installed")
+pytestmark = pytest.mark.skipif(not dbt_available(), reason="dbt is not installed")
 
 
-def run_dbt(root: Path, warehouse_path: Path, *args: str) -> subprocess.CompletedProcess:
-    """Run a dbt command against one warehouse file, keeping dbt's output inside `root`."""
-    env = {
-        **os.environ,
-        "PMEVAL_WAREHOUSE_PATH": str(warehouse_path),
-        "DBT_TARGET_PATH": str(root / "target"),
-    }
-    return subprocess.run(
-        [DBT, *args, "--profiles-dir", ".", "--log-path", str(root / "logs")],
-        cwd=DBT_PROJECT,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-
-
-@pytest.fixture(scope="module")
-def warehouse(tmp_path_factory):
-    """Build the fixture warehouse once, run `dbt build`, and return its path."""
-    root = tmp_path_factory.mktemp("dbt")
-    path = root / "warehouse.duckdb"
-    fixture_warehouse.build(root / "raw", path)
-    result = run_dbt(root, path, "build")
-    assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-1000:]
-    return path
+@pytest.fixture
+def warehouse(dbt_warehouse):
+    """The fixture warehouse after `dbt build` (built once per test session)."""
+    return dbt_warehouse
 
 
 def query(path, sql):

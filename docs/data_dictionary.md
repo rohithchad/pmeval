@@ -16,6 +16,25 @@ Every raw Parquet row has:
 
 Bronze views are named `bronze.<source>_<dataset>`, for example `bronze.kalshi_markets`.
 
+## Tables written by Python
+
+### `forecast.predictions`
+
+One row per (event, contract, forecaster, version). Insert-only: a rerun never overwrites an
+earlier prediction.
+
+| Column | Description |
+|--------|-------------|
+| `event_id`, `market_ticker` | The release and the contract forecast. |
+| `forecaster` | `base_rate`, `market`, and later the statistical model and the LLM. |
+| `version` | Forecaster version; bump it when the logic changes. |
+| `probability` | P(YES) in [0, 1] (enforced by a CHECK constraint and by validation). |
+| `forecast_time` | The as-of time; every input is at or before it. |
+| `release_at` | Scheduled release time. Live predictions must be made before it. |
+| `made_at` | Wall-clock time the prediction was produced (UTC). |
+| `mode` | `live` (made before the release; primary results) or `backtest` (made afterwards, as-of `forecast_time`). |
+| `metadata_json` | Forecaster-specific details, such as training window or prompt hash. |
+
 ## Silver and gold (generated from dbt YAML)
 
 Regenerate with `python -m pmeval.warehouse.data_dictionary`. A test fails if this section is stale.
