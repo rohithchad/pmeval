@@ -2,23 +2,59 @@ version: 2
 
 # Bronze views are created by `python -m pmeval.warehouse.bronze`. Each row holds one raw API
 # record as JSON text in `payload`, plus request_params, ingested_at and hive columns.
+# Freshness is measured on ingested_at, the time our pipeline wrote the row.
 sources:
   - name: bronze
     schema: bronze
     description: Untouched API responses registered from raw Parquet files.
     tables:
       - name: kalshi_series
+        description: Kalshi series records (templates for recurring events).
       - name: kalshi_events
+        description: Kalshi event records from the daily live ingest.
       - name: kalshi_markets
+        description: Kalshi live-tier market snapshots from the daily ingest.
+        loaded_at_field: ingested_at
+        config:
+          freshness:
+            warn_after: {count: 2, period: day}
+            error_after: {count: 7, period: day}
       - name: kalshi_candlesticks
+        description: Kalshi live-tier candlesticks from the daily ingest.
       - name: kalshi_live_markets
+        description: Settled markets still in Kalshi's live tier, from the backfill.
       - name: kalshi_live_candlesticks
+        description: Candlesticks for live-tier markets, from the backfill.
       - name: kalshi_live_trades
+        description: Trades for live-tier markets, from the backfill.
       - name: kalshi_historical_cutoff
+        description: Snapshots of GET /historical/cutoff, kept for audit.
       - name: kalshi_historical_markets
+        description: Settled markets archived to Kalshi's historical tier.
       - name: kalshi_historical_candlesticks
+        description: Candlesticks for historical-tier markets.
       - name: kalshi_historical_trades
+        description: Trades for historical-tier markets.
       - name: fred_observations
+        description: FRED first-release observations (and unrevised daily series).
+        loaded_at_field: ingested_at
+        config:
+          freshness:
+            warn_after: {count: 2, period: day}
+            error_after: {count: 7, period: day}
       - name: fred_release_calendar
+        description: Scheduled release dates from the FRED release calendar.
+        loaded_at_field: ingested_at
+        config:
+          freshness:
+            warn_after: {count: 8, period: day}
+            error_after: {count: 30, period: day}
       - name: fed_fomc_statements
+        description: FOMC statement pages from federalreserve.gov.
       - name: fed_fomc_meetings
+        description: FOMC meeting dates from the Fed calendar page.
+        loaded_at_field: ingested_at
+        config:
+          freshness:
+            warn_after: {count: 8, period: day}
+            error_after: {count: 30, period: day}

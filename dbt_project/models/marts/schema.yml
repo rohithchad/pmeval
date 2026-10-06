@@ -1,21 +1,157 @@
 version: 2
 
+seeds:
+  - name: series_registry
+    description: >
+      Maps each economic series to its FRED id, Kalshi series ticker, usual release time and the
+      transform that turns FRED levels into the headline figure. Mirrors SERIES_REGISTRY in Python.
+
 models:
+  - name: dim_event
+    description: >
+      One row per scheduled release (Kalshi event). Holds the release time and the single
+      forecast_time at which every forecaster must make its prediction.
+    columns:
+      - name: event_id
+        description: Kalshi event ticker, for example KXU3-26JUN.
+        data_tests: [unique, not_null]
+      - name: series_key
+        description: Internal series name from the registry.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('series_registry')
+                field: series_key
+      - name: release_at
+        description: Scheduled release time (UTC).
+        data_tests: [not_null]
+      - name: release_time_source
+        description: Where release_at came from; kalshi_close_time is a flagged fallback.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["fred_calendar", "fed_calendar", "kalshi_close_time"]
+      - name: forecast_time
+        description: release_at minus forecast_hours_before. No input may postdate it.
+        data_tests: [not_null]
+      - name: resolution_definition
+        description: Rule text of one representative contract of the event.
+      - name: is_resolved
+        description: True when every contract of the event has a result.
+
+  - name: fct_market_forecast
+    description: >
+      The market's forecast per contract: the YES price at forecast_time (last trade, else last
+      candle ending at or before it).
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [event_id, market_ticker]
+    columns:
+      - name: event_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_event')
+                field: event_id
+      - name: market_probability
+        description: Market-implied probability of YES at forecast_time; null if no price yet.
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: price_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["trade", "candlestick"]
+      - name: price_observed_at
+        description: Timestamp of the price used. Never later than forecast_time.
+        data_tests:
+          - not_after_forecast_time
+      - name: was_open_at_forecast_time
+        description: Whether the contract was trading at forecast_time.
+
+  - name: fct_outcome
+    description: Resolved result per contract. outcome is 1 for YES, 0 for NO, null otherwise.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [event_id, market_ticker]
+    columns:
+      - name: event_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_event')
+                field: event_id
+      - name: outcome
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+
+  - name: int_fred__headline_metrics
+    description: >
+      The headline figure each contract asks about (for example payroll change or CPI year over
+      year), computed from first-release values, with the time it became knowable.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [series_key, observation_date]
+    columns:
+      - name: available_at
+        description: When the figure could first be known (UTC).
+        data_tests: [not_null]
+
   - name: fct_features_asof
     description: >
       Point-in-time features per event contract. Every timestamp column must be at or before
-      forecast_time.
+      forecast_time; the custom test not_after_forecast_time enforces it.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [event_id, market_ticker]
     columns:
+      - name: event_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_event')
+                field: event_id
       - name: forecast_time
+        description: The moment the forecast is made (UTC).
+        data_tests: [not_null]
+      - name: strike
+        description: Contract threshold, for example 4.2 for "unemployment above 4.2%".
+      - name: contract_bps
+        description: Fed contracts only; signed basis points (H25 = +25, C25 = -25, H0 = 0).
+      - name: last_value
+        description: Latest headline figure known at forecast_time.
+      - name: prev_value
+        description: The figure before last_value.
+      - name: change_1
+        description: last_value minus prev_value.
+      - name: mean_prior_12
+        description: Mean of up to 12 figures before last_value.
+      - name: strike_minus_last_value
+        description: Distance between the threshold and the latest known figure.
       - name: last_value_available_at
+        description: When last_value became known (UTC).
         data_tests:
           - not_after_forecast_time
       - name: prev_value_available_at
         data_tests:
           - not_after_forecast_time
       - name: latest_statement_published_at
+        description: Publication time of the latest FOMC statement known at forecast_time.
         data_tests:
           - not_after_forecast_time
       - name: latest_feature_available_at
+        description: Latest availability time over all figures used.
         data_tests:
           - not_after_forecast_time

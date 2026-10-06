@@ -1,0 +1,137 @@
+version: 2
+
+models:
+  - name: stg_kalshi__markets
+    description: >
+      One row per Kalshi market (a single strike of a release). The latest ingested record wins,
+      so status and result are final once the market settles. Timestamps are naive UTC.
+    columns:
+      - name: market_ticker
+        description: Unique market id, for example KXU3-26JUN-T4.2.
+        data_tests: [unique, not_null]
+      - name: event_ticker
+        description: The release this market belongs to.
+        data_tests: [not_null]
+      - name: series_ticker
+        description: Series part of the event ticker as written (may lack the KX prefix).
+      - name: series_root
+        description: Series ticker without the KX prefix, used to match legacy and current names.
+        data_tests: [not_null]
+      - name: result
+        description: Resolution, yes or no (null before settlement).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["yes", "no", "scalar"]
+      - name: last_price_probability
+        description: Last traded YES price in dollars, which equals implied probability.
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: open_at
+        description: When trading opened (UTC).
+      - name: close_at
+        description: When trading closed (UTC). About one minute before the data release.
+      - name: settled_at
+        description: When the market settled (UTC).
+
+  - name: stg_kalshi__candlesticks
+    description: >
+      One row per market and candle period. Prices are probabilities. period_end_at is when the
+      candle closed; nothing in a candle was known before then.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [market_ticker, period_minutes, period_end_at]
+    columns:
+      - name: market_ticker
+        data_tests: [not_null]
+      - name: period_end_at
+        description: End of the candle period (UTC).
+        data_tests: [not_null]
+      - name: trade_close_probability
+        description: Closing trade price in the period; null when nothing traded.
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: previous_trade_probability
+        description: Price of the last trade before the period.
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: yes_bid_close_probability
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+      - name: yes_ask_close_probability
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+
+  - name: stg_kalshi__trades
+    description: One row per executed trade (live and historical tiers, de-duplicated).
+    columns:
+      - name: trade_id
+        data_tests: [unique, not_null]
+      - name: market_ticker
+        data_tests: [not_null]
+      - name: traded_at
+        description: Execution time (UTC).
+        data_tests: [not_null]
+      - name: yes_probability
+        description: YES contract price in dollars, equal to implied probability.
+        data_tests:
+          - accepted_range:
+              arguments: {min_value: 0, max_value: 1}
+
+  - name: stg_fred__observations
+    description: >
+      One row per FRED series and observation period at its FIRST release. Later revisions are
+      never stored here.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [fred_series_id, observation_date]
+    columns:
+      - name: fred_series_id
+        data_tests: [not_null]
+      - name: observation_date
+        description: First day of the period the value describes.
+        data_tests: [not_null]
+      - name: first_released_on
+        description: Date the value first became available. Never earlier than it was known.
+        data_tests: [not_null]
+      - name: vintage_policy
+        description: first_release, or unrevised for series that are never revised.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["first_release", "unrevised"]
+
+  - name: stg_fred__release_calendar
+    description: Scheduled releases with a UTC timestamp built from the date and usual local time.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_of_columns: [series_key, release_date]
+    columns:
+      - name: release_at
+        description: Scheduled release time (UTC). The local clock time is an assumption.
+        data_tests: [not_null]
+
+  - name: stg_fed__statements
+    description: One row per FOMC statement with its publication time (UTC).
+    columns:
+      - name: statement_path
+        data_tests: [unique, not_null]
+      - name: published_at
+        data_tests: [not_null]
+      - name: release_time_is_assumed
+        description: True when the page gave no release time and 14:00 New York time was assumed.
+
+  - name: stg_fed__meetings
+    description: One row per FOMC meeting, scheduled or past.
+    columns:
+      - name: meeting_end_date
+        description: Last day of the meeting, which is the statement date.
+        data_tests: [unique, not_null]

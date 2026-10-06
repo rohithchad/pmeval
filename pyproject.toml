@@ -23,6 +23,7 @@ dependencies = [
     "anthropic>=0.40",
     "jsonschema>=4.20",
     "beautifulsoup4>=4.12",
+    "pyyaml>=6",
 ]
 
 [project.optional-dependencies]

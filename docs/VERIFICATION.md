@@ -16,3 +16,4 @@ service and the output was observed. "Mocks only" means unit tests with recorded
 | Release calendar (FRED release dates for CPI, jobs, GDP) | Live on 2026-10-06 to a scratch directory |
 | Fed statement + meeting ingestion | Live on 2026-10-06 (47 statements, 57 meetings) to a scratch directory |
 | dbt staging models on real raw data (Kalshi sample, FRED, calendar, Fed) | Run on 2026-10-06 against a scratch warehouse built from real ingested data; unit-tested on synthetic fixtures |
+| dbt marts (dim_event, fct_*), schema tests and source freshness | `dbt build` (70 tests) passed on 2026-10-06 against a scratch warehouse built from real data (3 settled KXU3 contracts, real FRED, calendar, Fed). Source freshness ran: FRED sources PASS; `kalshi_markets` ERROR STALE because the daily live ingest was never run into that scratch warehouse. Full-history Kalshi data is not yet loaded |
