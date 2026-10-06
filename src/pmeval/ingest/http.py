@@ -60,6 +60,14 @@ class HttpClient:
 
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         """GET base_url + path and return the parsed JSON body."""
+        return self._get(path, params).json()
+
+    def get_text(self, path: str, params: dict[str, Any] | None = None) -> str:
+        """GET base_url + path and return the response body as text (for HTML pages)."""
+        return self._get(path, params).text
+
+    def _get(self, path: str, params: dict[str, Any] | None) -> requests.Response:
+        """Perform a GET with rate limiting and retries; return the successful response."""
         url = f"{self.base_url}/{path.lstrip('/')}"
         for attempt in range(self.max_retries + 1):
             self._wait_for_rate_limit()
@@ -73,7 +81,7 @@ class HttpClient:
                 continue
             if response.status_code >= 400:
                 raise HttpError(f"HTTP {response.status_code} for {url}")
-            return response.json()
+            return response
         raise HttpError(f"retries exhausted for {url}")  # pragma: no cover
 
     def _wait_for_rate_limit(self) -> None:

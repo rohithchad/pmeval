@@ -44,6 +44,10 @@ class SeriesSpec:
         fred_series_id: FRED/ALFRED series id for the underlying data.
         kalshi_series_ticker: Kalshi series that trades the release.
         release_name: human-readable name of the scheduled release.
+        fred_release_id: FRED release id used to look up scheduled release dates. None for the
+            Fed: FRED's FOMC release lists every day, so meeting dates come from the Fed calendar.
+        release_time_et: usual release time, "HH:MM" in America/New_York. FRED publishes
+            dates only, so the time is an assumption recorded in docs/DECISIONS.md D7.
         revised: False for series that agencies never revise (the Fed target rate), which
             lets ingestion skip vintage handling. See docs/DECISIONS.md D6.
     """
@@ -52,14 +56,16 @@ class SeriesSpec:
     fred_series_id: str
     kalshi_series_ticker: str
     release_name: str
+    fred_release_id: int | None
+    release_time_et: str
     revised: bool = True
 
 
 # Kalshi tickers are recorded in docs/DECISIONS.md as assumptions to re-verify live.
 SERIES_REGISTRY: tuple[SeriesSpec, ...] = (
-    SeriesSpec("cpi", "CPIAUCSL", "KXCPIYOY", "Consumer Price Index"),
-    SeriesSpec("payrolls", "PAYEMS", "KXPAYROLLS", "Employment Situation"),
-    SeriesSpec("unemployment", "UNRATE", "KXU3", "Employment Situation"),
-    SeriesSpec("gdp", "GDPC1", "KXGDP", "Gross Domestic Product"),
-    SeriesSpec("fed", "DFEDTARU", "KXFEDDECISION", "FOMC Meeting", revised=False),
+    SeriesSpec("cpi", "CPIAUCSL", "KXCPIYOY", "Consumer Price Index", 10, "08:30"),
+    SeriesSpec("payrolls", "PAYEMS", "KXPAYROLLS", "Employment Situation", 50, "08:30"),
+    SeriesSpec("unemployment", "UNRATE", "KXU3", "Employment Situation", 50, "08:30"),
+    SeriesSpec("gdp", "GDPC1", "KXGDP", "Gross Domestic Product", 53, "08:30"),
+    SeriesSpec("fed", "DFEDTARU", "KXFEDDECISION", "FOMC Meeting", None, "14:00", revised=False),
 )

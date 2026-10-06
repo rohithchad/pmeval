@@ -32,6 +32,9 @@ FRED_BASE_URL = "https://api.stlouisfed.org/fred"
 EARLIEST_REALTIME = "1776-07-04"
 LATEST_REALTIME = "9999-12-31"
 
+# Release dates are fetched from this date on; Kalshi's economic markets start well after it.
+CALENDAR_START = "2015-01-01"
+
 # output_type=4 means "Observations, Initial Release Only".
 OUTPUT_INITIAL_RELEASE_ONLY = 4
 
@@ -78,6 +81,24 @@ class FredClient:
             offset += len(page)
             if not page or offset >= int(body.get("count", offset)):
                 return rows
+
+    def get_release_dates(self, release_id: int) -> list[dict]:
+        """Return release dates (past and scheduled future) for one FRED release.
+
+        include_release_dates_with_no_data makes FRED list scheduled future dates too.
+        Each row is {"release_id": int, "date": "YYYY-MM-DD"}.
+        """
+        params = {
+            "release_id": release_id,
+            "api_key": self._api_key.get_secret_value(),
+            "file_type": "json",
+            "include_release_dates_with_no_data": "true",
+            "realtime_start": CALENDAR_START,
+            "realtime_end": LATEST_REALTIME,
+            "sort_order": "asc",
+            "limit": 10000,
+        }
+        return self.http.get_json("/release/dates", params).get("release_dates") or []
 
     def get_unrevised_observations(self, series_id: str) -> list[dict]:
         """Return all observations of a series that is never revised (default real-time period).

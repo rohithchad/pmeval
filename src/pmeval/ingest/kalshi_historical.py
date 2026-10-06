@@ -15,7 +15,6 @@ Run:  python -m pmeval.ingest.kalshi_historical [SERIES ...] [--no-trades]
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 from collections.abc import Iterator
 from pathlib import Path
@@ -29,6 +28,7 @@ from pmeval.ingest.kalshi import (
     make_http_client,
 )
 from pmeval.ingest.raw import write_raw
+from pmeval.ingest.state import ProgressState
 from pmeval.ingest.timeutil import parse_iso_to_unix
 from pmeval.logging_setup import setup_logging
 
@@ -75,27 +75,6 @@ class KalshiHistoricalClient(KalshiClient):
         )
 
 
-class BackfillState:
-    """Set of market tickers already fully backfilled, persisted as JSON."""
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.done: set[str] = set()
-        if path.exists():
-            self.done = set(json.loads(path.read_text())["done"])
-
-    def is_done(self, ticker: str) -> bool:
-        return ticker in self.done
-
-    def mark_done(self, ticker: str) -> None:
-        """Record a ticker and save immediately so a crash loses at most one market."""
-        self.done.add(ticker)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temp = self.path.with_suffix(".tmp")
-        temp.write_text(json.dumps({"done": sorted(self.done)}))
-        temp.replace(self.path)  # atomic rename: never leaves a half-written state file
-
-
 def is_historical(market: dict, cutoff_unix: int) -> bool:
     """True when the market settled before the cutoff (so only /historical/* serves it)."""
     settled = parse_iso_to_unix(market.get("settlement_ts"))
@@ -106,7 +85,7 @@ def backfill_series(
     client: KalshiHistoricalClient,
     raw_dir: Path,
     series_ticker: str,
-    state: BackfillState,
+    state: ProgressState,
     period: int = 60,
     include_trades: bool = True,
 ) -> None:
@@ -137,7 +116,7 @@ def backfill_market(
     series_ticker: str,
     market: dict,
     historical: bool,
-    state: BackfillState,
+    state: ProgressState,
     period: int,
     include_trades: bool,
 ) -> None:
@@ -171,7 +150,7 @@ def main() -> None:
     settings = get_settings()
     setup_logging(settings.pmeval_log_level)
     client = KalshiHistoricalClient(make_http_client())
-    state = BackfillState(settings.pmeval_raw_dir / "_state" / "kalshi_backfill.json")
+    state = ProgressState(settings.pmeval_raw_dir / "_state" / "kalshi_backfill.json")
     tickers = args.series or [spec.kalshi_series_ticker for spec in SERIES_REGISTRY]
     for ticker in tickers:
         backfill_series(

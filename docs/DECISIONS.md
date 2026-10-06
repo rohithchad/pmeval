@@ -68,3 +68,23 @@ Source: fred.stlouisfed.org/docs/api (series/observations, errors page), read 20
   monthly change derived in dbt), unemployment `UNRATE`, GDP `GDPC1` (real GDP level; growth derived
   in dbt), fed funds `DFEDTARU` (upper bound of target range). Whether derived growth rates match
   how each Kalshi contract defines its number is an open assumption to check against contract rules.
+
+## D7. Release calendar and Fed statements
+Checkpoint review (rule 9, before commit 9): no source needs registration or has restrictive terms.
+- Release dates come from the FRED release-dates endpoint with the existing FRED key
+  (`include_release_dates_with_no_data=true` lists scheduled future dates). Releases: CPI = 10,
+  Employment Situation = 50, GDP = 53. FRED gives dates only; release times are an assumption:
+  08:30 America/New_York for BLS and BEA releases, 14:00 for FOMC statements. Check these against
+  Kalshi `close_time` (about one minute before the data release) in a dbt test later.
+- GDP release 53 lists advance, second and third estimates. `dim_event` must pick the one that
+  matches each Kalshi event; this is open.
+- FRED's FOMC release (101) lists every calendar day, so it is not used. FOMC meeting dates and
+  statements come from the Federal Reserve Board calendar page
+  (federalreserve.gov/monetarypolicy/fomccalendars.htm), which covers 2021 to 2027. Board content is
+  public domain with a request to cite the Board; there is no robots.txt. We fetch 1 request per
+  second with an identifying User-Agent, and each statement once.
+- Statement pages state their release time ("For release at 2:00 p.m. EDT"); it is stored as text
+  and parsed in staging.
+- Meeting dates are stored as shown ("27-28", "17-18*"); the statement is released on the last day.
+  Meetings before 2021 are not ingested because Kalshi data does not reach back that far
+  (to be confirmed with real run results).

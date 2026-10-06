@@ -12,3 +12,5 @@ service and the output was observed. "Mocks only" means unit tests with recorded
 | Kalshi historical client: cutoff, historical markets, candlesticks, trades | Live read on 2026-10-06 (2 markets of KXU3) |
 | Backfill routing across both tiers + resume state | Live on a small sample (2 historical + 1 live-settled market). Full-series backfill not yet run |
 | FRED client: first-release observations (CPIAUCSL, PAYEMS, UNRATE, GDPC1) and unrevised DFEDTARU | Live on 2026-10-06 with the user's FRED key; fixtures recorded from it |
+| Release calendar (FRED release dates for CPI, jobs, GDP) | Live on 2026-10-06 to a scratch directory |
+| Fed statement + meeting ingestion | Live on 2026-10-06 (47 statements, 57 meetings) to a scratch directory |
