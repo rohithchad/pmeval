@@ -1,0 +1,65 @@
+# Continuous integration. No secrets are needed: every test uses recorded fixtures or synthetic
+# data and never touches the network. The live FRED, Kalshi and Anthropic checks are run by hand
+# (see docs/VERIFICATION.md).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev,app,dbt]"
+
+      - name: Lint (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Unit tests (pytest, includes dbt on fixtures and the dashboard)
+        run: pytest
+
+      - name: Build a fixture warehouse for the explicit dbt steps
+        run: python tests/fixture_warehouse.py "$RUNNER_TEMP/raw" "$RUNNER_TEMP/warehouse.duckdb"
+
+      - name: dbt parse
+        working-directory: dbt_project
+        env:
+          PMEVAL_WAREHOUSE_PATH: ${{ runner.temp }}/warehouse.duckdb
+        run: dbt parse --profiles-dir .
+
+      - name: dbt build and test on fixtures
+        working-directory: dbt_project
+        env:
+          PMEVAL_WAREHOUSE_PATH: ${{ runner.temp }}/warehouse.duckdb
+        run: dbt build --profiles-dir .
+
+  airflow-dags:
+    # Imports the DAG files with real Airflow, using Airflow's published constraints.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Airflow and test tools
+        run: |
+          pip install "apache-airflow==2.10.5" pytest responses \
+            --constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.11.txt
+          pip install -e . --constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.11.txt
+
+      - name: DAG import tests
+        run: pytest tests/test_dags.py
