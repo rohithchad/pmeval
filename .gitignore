@@ -1,2 +1,26 @@
+# secrets
 .env
+
+# data and warehouse files
+data/
+*.duckdb
+*.duckdb.wal
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# dbt
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+
+# airflow
+airflow/logs/
+
+# os
 .DS_Store

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pmeval"
+version = "0.1.0"
+description = "Prediction market forecast evaluation platform"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.1",
+    "pyarrow>=14",
+    "duckdb>=1.0",
+    "requests>=2.31",
+    "pydantic>=2.5",
+    "pydantic-settings>=2.1",
+    "python-dotenv>=1.0",
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "anthropic>=0.40",
+    "jsonschema>=4.20",
+    "beautifulsoup4>=4.12",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.35"]
+dbt = ["dbt-duckdb>=1.8"]
+dev = ["pytest>=8", "responses>=0.25", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pmeval = ["forecast/prompts/*.txt"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
