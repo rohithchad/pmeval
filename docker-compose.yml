@@ -1,0 +1,82 @@
+# Local stack: Streamlit app plus Airflow (Postgres metadata DB, scheduler, webserver).
+# Raw data and the DuckDB warehouse live in ./data, shared by every service.
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: airflow/Dockerfile
+  env_file:
+    - path: .env
+      required: false
+  environment: &airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    PMEVAL_RAW_DIR: /opt/airflow/data/raw
+    PMEVAL_WAREHOUSE_PATH: /opt/airflow/data/warehouse.duckdb
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./dbt_project:/opt/airflow/dbt_project
+    - ./data:/opt/airflow/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PMEVAL_RAW_DIR: /app/data/raw
+      PMEVAL_WAREHOUSE_PATH: /app/data/warehouse.duckdb
+    volumes:
+      - ./data:/app/data
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate &&
+        airflow users create --username admin --firstname Admin --lastname User \
+          --role Admin --email admin@example.com \
+          --password "$${AIRFLOW_ADMIN_PASSWORD:-admin}"
+    # Local-only default login is admin/admin. Set AIRFLOW_ADMIN_PASSWORD in .env to change it.
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
